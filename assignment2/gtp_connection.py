@@ -20,7 +20,7 @@ from board_util import (
 )
 import numpy as np
 import re
-
+import signal, time
 
 class GtpConnection:
     def __init__(self, go_engine, board, debug_mode=False):
@@ -30,7 +30,7 @@ class GtpConnection:
         Parameters
         ----------
         go_engine:
-            a program that can reply to a set of GTP commandsbelow
+            a program that can reply to a set of GTP commands below
         board: 
             Represents the current board state.
         """
@@ -57,7 +57,9 @@ class GtpConnection:
             "gogui-rules_side_to_move": self.gogui_rules_side_to_move_cmd,
             "gogui-rules_board": self.gogui_rules_board_cmd,
             "gogui-rules_final_result": self.gogui_rules_final_result_cmd,
-            "gogui-analyze_commands": self.gogui_analyze_cmd
+            "gogui-analyze_commands": self.gogui_analyze_cmd,
+            "timelimit": self.time_limit_cmd,
+            "solve": self.solve_cmd
         }
 
         # used for argument checking
@@ -71,6 +73,8 @@ class GtpConnection:
             "play": (2, "Usage: play {b,w} MOVE"),
             "legal_moves": (1, "Usage: legal_moves {w,b}"),
         }
+
+        self.time = 1
 
     def write(self, data):
         stdout.write(data)
@@ -263,6 +267,19 @@ class GtpConnection:
             return
         board_color = args[0].lower()
         color = color_to_int(board_color)
+
+        #ask solver who is winning (winner is a tuple)
+        winner = solve(self)
+
+        #if toPlay is winning, play winning move and respond winning move
+        if(winner[0] == board_color):
+            move_coord = point_to_coord(winner[1], self.board.size)
+            move_as_string = format_point(move_coord)
+            self.board.play_move(winner[1], color)
+            self.respond(move_as_string.lower())
+            return
+        
+        #if toPlay is losing, or timelimit reached, return random move
         move = self.go_engine.get_move(self.board, color)
         move_coord = point_to_coord(move, self.board.size)
         move_as_string = format_point(move_coord)
@@ -337,6 +354,41 @@ class GtpConnection:
                      "pstring/Rules GameID/gogui-rules_game_id\n"
                      "pstring/Show Board/gogui-rules_board\n"
                      )
+
+    def time_limit_cmd(self, args):
+        self.time = int(args[0])
+        self.respond("")
+
+    #response is in the form: "winner [move]"
+    def solve_cmd(self):
+        return
+
+#return is in the form: (winner, move)
+#con is the gtp-connection object
+def solve(con):
+    #what is currently in this function is a contrived nonsensical example
+    signal.signal(signal.SIGALRM, handler)
+    try:
+        signal.alarm(con.time)
+        #time.sleep(5)
+
+        #implement the actual solver here
+        if (con.board.get_empty_points().size == 49):
+            signal.alarm(0)
+            return ("b", 9)
+        elif (con.board.get_empty_points().size == 48):
+            signal.alarm(0)
+            return ("w", 10)
+        elif (con.board.get_empty_points().size == 47):
+            signal.alarm(0)
+            return ("x", -1)
+        return
+    except:
+        return ("x", -1)
+
+def handler(signum, frame):
+    print("Time's up!")
+    raise OSError("Time's up!")
 
 def point_to_coord(point, boardsize):
     """
