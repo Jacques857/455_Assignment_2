@@ -324,6 +324,68 @@ class GoBoard(object):
                 return result
         return EMPTY
 
+    def detect_two_to_five_in_a_row(self):
+        """
+        Returns 2-tuple where first value is:
+            color {BLACK, WHITE} that has the longest consecutive sequence
+        second value is:
+            length of the longest sequence
+        """
+        for r in self.rows:
+            result = self.has_five_in_list(r)
+            if result != EMPTY:
+                return (result, 5)
+        for c in self.cols:
+            result = self.has_five_in_list(c)
+            if result != EMPTY:
+                return (result, 5)
+        for d in self.diags:
+            result = self.has_five_in_list(d)
+            if result != EMPTY:
+                return (result, 5)
+
+        for r in self.rows:
+            result = self.has_four_in_list(r)
+            if result != EMPTY:
+                return (result, 4)
+        for c in self.cols:
+            result = self.has_four_in_list(c)
+            if result != EMPTY:
+                return (result, 4)
+        for d in self.diags:
+            result = self.has_four_in_list(d)
+            if result != EMPTY:
+                return (result, 4)
+
+        for r in self.rows:
+            result = self.has_three_in_list(r)
+            if result != EMPTY:
+                return (result, 3)
+        for c in self.cols:
+            result = self.has_three_in_list(c)
+            if result != EMPTY:
+                return (result, 3)
+        for d in self.diags:
+            result = self.has_three_in_list(d)
+            if result != EMPTY:
+                return (result, 3)
+
+        for r in self.rows:
+            result = self.has_two_in_list(r)
+            if result != EMPTY:
+                return (result, 2)
+        for c in self.cols:
+            result = self.has_two_in_list(c)
+            if result != EMPTY:
+                return (result, 2)
+        for d in self.diags:
+            result = self.has_two_in_list(d)
+            if result != EMPTY:
+                return (result, 2)
+            
+        return (EMPTY, 1)
+        
+
     def has_five_in_list(self, list):
         """
         Returns BLACK or WHITE if any five in a rows exist in the list.
@@ -341,27 +403,80 @@ class GoBoard(object):
                 return prev
         return EMPTY
 
-    #returns 0 if draw, 2 if toplay has won, -1 if toplay has lost, 1 otherwise
+    def has_four_in_list(self, list):
+        """
+        Returns BLACK or WHITE if any five in a rows exist in the list.
+        EMPTY otherwise.
+        """
+        prev = BORDER
+        counter = 1
+        for stone in list:
+            if self.get_color(stone) == prev:
+                counter += 1
+            else:
+                counter = 1
+                prev = self.get_color(stone)
+            if counter == 4 and prev != EMPTY:
+                return prev
+        return EMPTY
+
+    def has_three_in_list(self, list):
+        """
+        Returns BLACK or WHITE if any five in a rows exist in the list.
+        EMPTY otherwise.
+        """
+        prev = BORDER
+        counter = 1
+        for stone in list:
+            if self.get_color(stone) == prev:
+                counter += 1
+            else:
+                counter = 1
+                prev = self.get_color(stone)
+            if counter == 3 and prev != EMPTY:
+                return prev
+        return EMPTY
+
+    def has_two_in_list(self, list):
+        """
+        Returns BLACK or WHITE if any five in a rows exist in the list.
+        EMPTY otherwise.
+        """
+        prev = BORDER
+        counter = 1
+        for stone in list:
+            if self.get_color(stone) == prev:
+                counter += 1
+            else:
+                counter = 1
+                prev = self.get_color(stone)
+            if counter == 2 and prev != EMPTY:
+                return prev
+        return EMPTY
+
+    #returns 0 if draw, 5 if toplay has won, 4 if toplay has at most 4 in a row, 3 if toplay has at most 3 in a row,
+    #2 if toplay has at most 2 in a row, 1 if toplay has at most 1 in a row, and -5,-4,-3,-2 in reverse cases
     def staticallyEvaluateForToPlay(self):
-        if (self.detect_five_in_a_row() == WHITE):
-            if (self.current_player == BLACK):
-                return -2
-            if (self.current_player == WHITE):
-                return 2
-        if (self.detect_five_in_a_row() == BLACK):
-            if (self.current_player == BLACK):
-                return 2
-            if (self.current_player == WHITE):
-                return -2
-        if (self.get_empty_points().size == 0):
+        detectionResult = self.detect_two_to_five_in_a_row()
+        if (self.get_empty_points().size == 0 and detectionResult[1] != 5):
             return 0
+        if (detectionResult[0] == WHITE):
+            if (self.current_player == BLACK):
+                return -detectionResult[1]
+            if (self.current_player == WHITE):
+                return detectionResult[1]
+        if (detectionResult[0] == BLACK):
+            if (self.current_player == BLACK):
+                return detectionResult[1]
+            if (self.current_player == WHITE):
+                return -detectionResult[1]
         return 1
 
     def endOfGame(self):
         if (self.get_empty_points().size == 0):
             return True
         staticallyEvaluate = self.staticallyEvaluateForToPlay()
-        if (staticallyEvaluate == 2 or staticallyEvaluate == -2):
+        if (staticallyEvaluate == 5 or staticallyEvaluate == -5):
             return True
         return False
 

@@ -23,7 +23,7 @@ span.test { font-weight:bold; }
 </td></tr>
 </table>
 <table width="100%" bgcolor="#e0e0e0">
-<tr><th align="left">Date:</th><td>February 15, 2021 12:38:57 PM MST</td></tr>
+<tr><th align="left">Date:</th><td>February 15, 2021 2:46:19 PM MST</td></tr>
 <tr><th align="left">Host:</th><td>ug13 (Intel(R) Core(TM) i5-8500 CPU @ 3.00GHz)</td></tr>
 <tr><th align="left" valign="top">Command:</th>
 <td valign="top"><tt>python3 Gomoku.py</tt></td></tr>
@@ -582,7 +582,7 @@ cputime
 
 <span class="test"><a name="60">60 solve
 </a>#?[draw G1|draw G5]
-= draw G1
+= draw G5
 
 </span>
 <span class="command">clear_board
@@ -1073,11 +1073,11 @@ cputime
 
 <span class="test"><a name="120">120 solve
 </a>#?[w B3|w G3]
-= w B3
+= w G3
 
 <a name="130">130 genmove w
 </a>#?[B3|G3]
-= B3
+= G3
 
 </span>
 <span class="command">clear_board
@@ -1118,11 +1118,11 @@ cputime
 
 <span class="test"><a name="140">140 solve
 </a>#?[w D2|w D6]
-= w D2
+</span><span class="fail">= unknown
 
-<a name="150">150 genmove w
+</span><span class="test"><a name="150">150 genmove w
 </a>#?[D2|D6]
-= D2
+</span><span class="fail">= F6
 
 </span>
 <span class="comment">#test 160, 170, ..., 200 are hard
@@ -1133,8 +1133,7 @@ cputime
 </span>= 
 
 <span class="test"><a name="160">160 solve
-</a></span><span class="invalid">Invalid response: Time's up!
-</span><span class="test">#?[unknown]
+</a>#?[unknown]
 = unknown
 
 </span>
@@ -1145,8 +1144,7 @@ cputime
 </span>= 
 
 <span class="test"><a name="170">170 solve
-</a></span><span class="invalid">Invalid response: Time's up!
-</span><span class="test">#?[unknown]
+</a>#?[unknown]
 = unknown
 
 </span>
@@ -1154,103 +1152,3 @@ cputime
 </span>= 
 
 <span class="command">boardsize 7
-</span>= 
-
-<span class="command">play B C3
-</span>= 
-
-<span class="command">play W A2
-</span>= 
-
-<span class="command">play B C4
-</span>= 
-
-<span class="command">play W G6
-</span>= 
-
-<span class="command">play B D4
-</span>= 
-
-<span class="command">play W A4
-</span>= 
-
-<span class="command">play B E3
-</span>= 
-
-<span class="command">play W G7
-</span>= 
-
-<span class="test"><a name="180">180 solve
-</a></span><span class="invalid">Invalid response: Time's up!
-</span><span class="test">#?[b C5]
-</span><span class="fail">= unknown
-
-</span>
-<span class="command">timelimit 60
-</span>= 
-
-<span class="command">boardsize 7
-</span>= 
-
-<span class="command">play B C3
-</span>= 
-
-<span class="command">play W A1
-</span>= 
-
-<span class="command">play B C4
-</span>= 
-
-<span class="command">play W G6
-</span>= 
-
-<span class="command">play B D4
-</span>= 
-
-<span class="command">play W A4
-</span>= 
-
-<span class="command">play B E3
-</span>= 
-
-<span class="command">play W G7
-</span>= 
-
-<span class="test"><a name="190">190 solve
-</a></span><span class="invalid">Invalid response: Time's up!
-</span><span class="test">#?[b C5]
-</span><span class="fail">= unknown
-
-</span>
-<span class="command">timelimit 30
-</span>= 
-
-<span class="command">boardsize 7
-</span>= 
-
-<span class="command">play B C3
-</span>= 
-
-<span class="command">play W A2
-</span>= 
-
-<span class="command">play B C4
-</span>= 
-
-<span class="command">play W G6
-</span>= 
-
-<span class="command">play B D4
-</span>= 
-
-<span class="command">play W A4
-</span>= 
-
-<span class="command">play B E3
-</span>= 
-
-<span class="command">play W G2
-</span>= 
-
-<span class="test"><a name="200">200 solve
-</a>

@@ -374,26 +374,25 @@ class GtpConnection:
             current_player = board_copy.current_player
 
             result = iterativeDeepening(board_copy)
-            
+
             self.board.updateHash(board_copy)
             move = format_point(point_to_coord(self.board.hashTable.lookup(self.board.hash())[1], board_copy.size))
             signal.alarm(0)
 
             if (self.genMoveRunning == False):
-                if (result == 2 and current_player == BLACK):
+                if (result == 5 and current_player == BLACK):
                     self.respond("b %s" %move)
-                elif (result == 2 and current_player == WHITE):
+                elif (result == 5 and current_player == WHITE):
                     self.respond("w %s" %move)
-                elif (result == -2 and current_player == BLACK):
+                elif (result == -5 and current_player == BLACK):
                     self.respond("w")
-                elif (result == -2 and current_player == WHITE):
+                elif (result == -5 and current_player == WHITE):
                     self.respond("b")
                 else:
                     self.respond("draw %s" %move)
-            
+
             return self.board.hashTable.lookup(self.board.hash())[1]
-        except Exception as e:
-            print(e)
+        except:
             if (self.genMoveRunning == False):
                 self.respond("unknown")
 
@@ -401,7 +400,7 @@ def iterativeDeepening(board):
     result = 1
     for d in range(1, board.get_empty_points().size + 1):
         result = alphabeta_tt(board, -INFINITY, INFINITY, board.hashTable, 0, INFINITY, d)
-        if result == 2:
+        if result == 5 or result == -5:
             return result
     return result
 
@@ -416,17 +415,24 @@ def storeMove(tt, state, move):
 def alphabeta_tt(state, alpha, beta, tt, depth, depthMove, depthLimit):
     result = tt.lookup(state.hash())
     if (result != None):
-        if (result[0] == 2):
+        if (result[0] == 5):
             return result[0]
     if (state.endOfGame() or depth == depthLimit):
         result = state.staticallyEvaluateForToPlay()
         return storeScore(tt, state, result)
-    for m in state.get_empty_points():
+
+    #order the moves according to heuristic
+    #orderedMoves will be a list that holds 2-tuples (move, heuristic)
+    orderedMoves = orderMoves(state)
+
+    #run alphabeta
+    for m in orderedMoves:
+        m = m[0]
         winMove = None
         state.play_move(m, state.current_player)
         value = -alphabeta_tt(state, -beta, -alpha, tt, depth + 1, depthMove, depthLimit)
         if value > alpha:
-            if (value == 0 or value == 2):
+            if (value == 0 or value == 5):
                 winMove = m
             alpha = value
         state.undoMove()
@@ -435,6 +441,27 @@ def alphabeta_tt(state, alpha, beta, tt, depth, depthMove, depthLimit):
         if value >= beta:
             return storeScore(tt, state, beta)
     return storeScore(tt, state, alpha)
+
+def orderMoves(state):
+    orderedMoves = []
+    for m in state.get_empty_points():
+        state.play_move(m, state.current_player)
+        heuristic = state.staticallyEvaluateForToPlay()
+        if (len(orderedMoves) > 0):
+            index = 0
+            while (index < len(orderedMoves) and orderedMoves[index][1] > heuristic):
+                index += 1
+            if (index >= len(orderedMoves)):
+                tempTuple = (m, heuristic)
+                orderedMoves.append(tempTuple)
+            else:
+                tempTuple = (m, heuristic)
+                orderedMoves.insert(index, tempTuple)
+        else:
+            tempTuple = (m, heuristic)
+            orderedMoves.append(tempTuple)
+        state.undoMove()
+    return orderedMoves
         
 def negamaxBoolean(state, depth, moveDepth):
     move = -1
