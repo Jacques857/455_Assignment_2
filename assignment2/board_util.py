@@ -15,6 +15,8 @@ BLACK = 1
 WHITE = 2
 BORDER = 3
 
+INFINITY = 1000000
+
 
 def is_black_white(color):
     return color == BLACK or color == WHITE

@@ -1,0 +1,12 @@
+timelimit 30
+boardsize 7
+play B C3
+play W A2
+play B C4
+play W G6
+play B D4
+play W A4
+play B E3
+play W G7
+180 solve
+#?[b C5]

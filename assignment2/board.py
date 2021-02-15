@@ -10,6 +10,7 @@ The board uses a 1-dimensional representation with padding
 """
 
 import numpy as np
+from gtp_connection import point_to_coord
 from board_util import (
     GoBoardUtil,
     BLACK,
@@ -24,6 +25,8 @@ from board_util import (
     MAXSIZE,
     GO_POINT
 )
+import random
+from transposition_table import TranspositionTable
 
 """
 The GoBoard class implements a board and basic functions to play
@@ -111,21 +114,22 @@ class GoBoard(object):
         self.NS = size + 1
         self.WE = 1
         self.ko_recapture = None
-        self.last_move = None
-        self.last2_move = None
+        self.moves = []
         self.current_player = BLACK
         self.maxpoint = size * size + 3 * (size + 1)
         self.board = np.full(self.maxpoint, BORDER, dtype=GO_POINT)
         self._initialize_empty_points(self.board)
         self.calculate_rows_cols_diags()
+        self.drawWinner = BLACK
+        self.hashTable = TranspositionTable()
+        self.init_zobrist()
 
     def copy(self):
         b = GoBoard(self.size)
         assert b.NS == self.NS
         assert b.WE == self.WE
         b.ko_recapture = self.ko_recapture
-        b.last_move = self.last_move
-        b.last2_move = self.last2_move
+        b.moves = self.moves
         b.current_player = self.current_player
         assert b.maxpoint == self.maxpoint
         b.board = np.copy(self.board)
@@ -271,35 +275,13 @@ class GoBoard(object):
         if point == PASS:
             self.ko_recapture = None
             self.current_player = GoBoardUtil.opponent(color)
-            self.last2_move = self.last_move
-            self.last_move = point
+            self.moves.append(point)
             return True
         elif self.board[point] != EMPTY:
             return False
-        # if point == self.ko_recapture:
-        #     return False
-
-        # General case: deal with captures, suicide, and next ko point
-        # opp_color = GoBoardUtil.opponent(color)
-        # in_enemy_eye = self._is_surrounded(point, opp_color)
         self.board[point] = color
-        # single_captures = []
-        # neighbors = self._neighbors(point)
-        # for nb in neighbors:
-        #     if self.board[nb] == opp_color:
-        #         single_capture = self._detect_and_process_capture(nb)
-        #         if single_capture != None:
-        #             single_captures.append(single_capture)
-        # block = self._block_of(point)
-        # if not self._has_liberty(block):  # undo suicide move
-        #     self.board[point] = EMPTY
-        #     return False
-        # self.ko_recapture = None
-        # if in_enemy_eye and len(single_captures) == 1:
-        #     self.ko_recapture = single_captures[0]
         self.current_player = GoBoardUtil.opponent(color)
-        self.last2_move = self.last_move
-        self.last_move = point
+        self.moves.append(point)
         return True
 
     def neighbors_of_color(self, point, color):
@@ -322,18 +304,6 @@ class GoBoard(object):
             point + self.NS - 1,
             point + self.NS + 1,
         ]
-
-    def last_board_moves(self):
-        """
-        Get the list of last_move and second last move.
-        Only include moves on the board (not None, not PASS).
-        """
-        board_moves = []
-        if self.last_move != None and self.last_move != PASS:
-            board_moves.append(self.last_move)
-        if self.last2_move != None and self.last2_move != PASS:
-            board_moves.append(self.last2_move)
-            return 
 
     def detect_five_in_a_row(self):
         """
@@ -370,3 +340,58 @@ class GoBoard(object):
             if counter == 5 and prev != EMPTY:
                 return prev
         return EMPTY
+
+    #returns 0 if no one has won yet, 1 if toplay has won, -1 if toplay has lost
+    def staticallyEvaluateForToPlay(self):
+        if (self.detect_five_in_a_row() == WHITE):
+            if (self.current_player == BLACK):
+                return -1
+            if (self.current_player == WHITE):
+                return 1
+        if (self.detect_five_in_a_row() == BLACK):
+            if (self.current_player == BLACK):
+                return 1
+            if (self.current_player == WHITE):
+                return -1
+        return 0
+
+    def endOfGame(self):
+        if (self.get_empty_points().size == 0):
+            return True
+        if (self.staticallyEvaluateForToPlay() == 1 or self.staticallyEvaluateForToPlay() == -1):
+            return True
+        return False
+
+    def undoMove(self):
+        location = self.moves.pop()
+        self.board[location] = EMPTY
+        self.current_player = GoBoardUtil.opponent(self.current_player)
+
+    #Sourced from Wikipedia:
+    #https://en.wikipedia.org/wiki/Zobrist_hashing
+    def init_zobrist(self):
+        # fill a table of random numbers/bitstrings
+        self.table = np.empty((self.size * self.size,2), dtype=int)
+        for i in range(self.size * self.size):  # loop over the board, represented as a linear array
+            for j in range(2): #loop over the pieces
+                self.table[i][j] = random.randint(1,10000000)
+
+    #board is the 1d array attribute of the GoBoard object
+    def hash(self):
+        h = 0
+        for i in range(self.size*self.size):  # loop over the board positions
+            twodCoords = oned_twod(i, self.size)
+            if self.board[coord_to_point(twodCoords[0], twodCoords[1], self.size)] != EMPTY and self.board[coord_to_point(twodCoords[0], twodCoords[1], self.size)] != BORDER:
+                j = self.board[coord_to_point(twodCoords[0], twodCoords[1], self.size)] - 1 #since BLACK is 1 and WHITE is 2, and array indexing starts at 0
+                h = h ^ self.table[i][j]
+        return h
+
+    def updateHash(self, board_copy):
+        self.table = board_copy.table
+        self.hashTable = board_copy.hashTable
+
+#returns the 2d (row,col) representation of the point, assuming the point ignores borders
+def oned_twod(point, boardsize):
+    row = (point // boardsize) + 1
+    col = (point % boardsize) + 1
+    return (row, col)

@@ -1,0 +1,28 @@
+boardsize 5
+clear_board
+play B a1
+play W b1
+play b c1
+play w d1
+play b e1
+play w a2
+play B a3
+play W b2
+play b c2
+play w d2
+play b e2
+play W b3
+play b c3
+play w d3
+play b e3
+play w c5
+play B a4
+play W b4
+play b c4
+play w d4
+play b e4
+play w a5
+play b d4
+
+showboard
+solve

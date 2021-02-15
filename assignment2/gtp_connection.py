@@ -8,12 +8,14 @@ at the University of Edinburgh.
 """
 import traceback
 from sys import stdin, stdout, stderr
+import sys,os
 from board_util import (
     GoBoardUtil,
     BLACK,
     WHITE,
     EMPTY,
     BORDER,
+    INFINITY,
     PASS,
     MAXSIZE,
     coord_to_point,
@@ -75,6 +77,7 @@ class GtpConnection:
         }
 
         self.time = 1
+        self.genMoveRunning = False
 
     def write(self, data):
         stdout.write(data)
@@ -269,14 +272,15 @@ class GtpConnection:
         color = color_to_int(board_color)
 
         #ask solver who is winning (winner is a tuple)
-        winner = solve(self)
+        self.genMoveRunning = True
+        winMove = self.solve_cmd(self)
+        self.genMoveRunning = False
 
-        #if toPlay is winning, play winning move and respond winning move
-        if(winner[0] == board_color):
-            move_coord = point_to_coord(winner[1], self.board.size)
-            move_as_string = format_point(move_coord)
-            self.board.play_move(winner[1], color)
-            self.respond(move_as_string.lower())
+        #if toPlay is winning or draw, play winning move and respond winning move
+        if(winMove != None and self.board.current_player == color):
+            winMoveAsString = format_point(point_to_coord(winMove, self.board.size))
+            self.board.play_move(winMove, color)
+            self.respond(winMoveAsString)
             return
         
         #if toPlay is losing, or timelimit reached, return random move
@@ -285,7 +289,7 @@ class GtpConnection:
         move_as_string = format_point(move_coord)
         if self.board.is_legal(move, color):
             self.board.play_move(move, color)
-            self.respond(move_as_string.lower())
+            self.respond(move_as_string)
         else:
             self.respond("Illegal move: {}".format(move_as_string))
 
@@ -360,34 +364,125 @@ class GtpConnection:
         self.respond("")
 
     #response is in the form: "winner [move]"
-    def solve_cmd(self):
-        return
+    def solve_cmd(self, args):
+        signal.signal(signal.SIGALRM, handler)
+        try:
+            signal.alarm(self.time)
 
-#return is in the form: (winner, move)
-#con is the gtp-connection object
-def solve(con):
-    #what is currently in this function is a contrived nonsensical example
-    signal.signal(signal.SIGALRM, handler)
-    try:
-        signal.alarm(con.time)
-        #time.sleep(5)
+            #implement the actual solver here
+            board_copy = self.board.copy()
+            current_player = board_copy.current_player
+            
+            result = alphabeta_tt(board_copy, -INFINITY, INFINITY, board_copy.hashTable, 0, INFINITY)
+            
+            self.board.updateHash(board_copy)
+            move = format_point(point_to_coord(self.board.hashTable.lookup(self.board.hash())[1], board_copy.size))
+            signal.alarm(0)
 
-        #implement the actual solver here
-        if (con.board.get_empty_points().size == 49):
-            signal.alarm(0)
-            return ("b", 9)
-        elif (con.board.get_empty_points().size == 48):
-            signal.alarm(0)
-            return ("w", 10)
-        elif (con.board.get_empty_points().size == 47):
-            signal.alarm(0)
-            return ("x", -1)
-        return
-    except:
-        return ("x", -1)
+            if (self.genMoveRunning == False):
+                if (result == 1 and current_player == BLACK):
+                    self.respond("b %s" %move)
+                elif (result == 1 and current_player == WHITE):
+                    self.respond("w %s" %move)
+                elif (result == -1 and current_player == BLACK):
+                    self.respond("w")
+                elif (result == -1 and current_player == WHITE):
+                    self.respond("b")
+                else:
+                    self.respond("draw %s" %move)
+            
+            return self.board.hashTable.lookup(self.board.hash())[1]
+        except:
+            if (self.genMoveRunning == False):
+                self.respond("unknown")
+
+def storeScore(tt, state, score):
+    tt.storeScore(state.hash(), score)
+    return score
+
+def storeMove(tt, state, move):
+    tt.storeMove(state.hash(), move)
+    return move
+        
+def alphabeta_tt(state, alpha, beta, tt, depth, depthMove):
+    result = tt.lookup(state.hash())
+    if (result != None):
+        return result[0]
+    if (state.endOfGame()):
+        result = state.staticallyEvaluateForToPlay()
+        return storeScore(tt, state, result)
+    for m in state.get_empty_points():
+        winMove = -1
+        state.play_move(m, state.current_player)
+        value = -alphabeta_tt(state, -beta, -alpha, tt, depth + 1, depthMove)
+        if value > alpha:
+            if (value == 1 or value == 0):
+                winMove = m
+            alpha = value
+        state.undoMove()
+        if (winMove != -1):
+            storeMove(tt, state, winMove)
+        if value >= beta:
+            return storeScore(tt, state, beta)
+    return storeScore(tt, state, alpha)
+        
+def negamaxBoolean(state, depth, moveDepth):
+    move = -1
+    if state.endOfGame():
+        return (state.staticallyEvaluateForToPlay(), move)
+    for m in state.get_empty_points():
+        state.play_move(m, state.current_player)
+        success = not negamaxBoolean(state, depth + 1, moveDepth)[0]
+        state.undoMove()
+        if success:
+            if (moveDepth > depth):
+                moveDepth = depth
+                move = m
+                print(move, moveDepth)
+            return (True, move)
+    return (False, move)
+
+def solveForColor(state, color):
+    saveOldDrawWinner = state.drawWinner
+    # to check if color can win, count all draws as win for opponent
+    state.drawWinner = GoBoardUtil.opponent(color)
+    toPlayColor = state.current_player
+    resultTuple = negamaxBoolean(state, 0, INFINITY)
+    winForToPlay = resultTuple[0]
+    move = resultTuple[1]
+    if (winForToPlay and toPlayColor == color):
+        return (1, move)
+    elif (winForToPlay and toPlayColor != color):
+        return (-1, move)
+    state.drawWinner = saveOldDrawWinner
+    resultTuple= negamaxBoolean(state, 0, INFINITY)
+    drawForToPlay = resultTuple[0]
+    move = resultTuple[1]
+    if (drawForToPlay):
+        return (0, move)
+    else:
+        return (-1, move)
+
+#returns in the format: (win/loss/draw, move)
+def alphabeta(state, alpha, beta, depth, moveDepth):
+    move = -1
+    if state.endOfGame():
+        return (state.staticallyEvaluateForToPlay(), -1) 
+    for m in state.get_empty_points():
+        state.play_move(m, state.current_player)
+        value = -(alphabeta(state, -beta, -alpha, depth + 1, moveDepth)[0])
+        if value > alpha:
+            if (moveDepth > depth):
+                moveDepth = depth
+                move = m
+                print(move, moveDepth)
+            alpha = value
+        state.undoMove()
+        if value >= beta:
+            return (beta, move)
+    return (alpha, move)
 
 def handler(signum, frame):
-    print("Time's up!")
     raise OSError("Time's up!")
 
 def point_to_coord(point, boardsize):
