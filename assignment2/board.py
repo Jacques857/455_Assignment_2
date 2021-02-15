@@ -341,24 +341,27 @@ class GoBoard(object):
                 return prev
         return EMPTY
 
-    #returns 0 if no one has won yet, 1 if toplay has won, -1 if toplay has lost
+    #returns 0 if draw, 2 if toplay has won, -1 if toplay has lost, 1 otherwise
     def staticallyEvaluateForToPlay(self):
         if (self.detect_five_in_a_row() == WHITE):
             if (self.current_player == BLACK):
-                return -1
+                return -2
             if (self.current_player == WHITE):
-                return 1
+                return 2
         if (self.detect_five_in_a_row() == BLACK):
             if (self.current_player == BLACK):
-                return 1
+                return 2
             if (self.current_player == WHITE):
-                return -1
-        return 0
+                return -2
+        if (self.get_empty_points().size == 0):
+            return 0
+        return 1
 
     def endOfGame(self):
         if (self.get_empty_points().size == 0):
             return True
-        if (self.staticallyEvaluateForToPlay() == 1 or self.staticallyEvaluateForToPlay() == -1):
+        staticallyEvaluate = self.staticallyEvaluateForToPlay()
+        if (staticallyEvaluate == 2 or staticallyEvaluate == -2):
             return True
         return False
 

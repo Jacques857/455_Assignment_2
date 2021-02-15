@@ -372,29 +372,38 @@ class GtpConnection:
             #implement the actual solver here
             board_copy = self.board.copy()
             current_player = board_copy.current_player
-            
-            result = alphabeta_tt(board_copy, -INFINITY, INFINITY, board_copy.hashTable, 0, INFINITY)
+
+            result = iterativeDeepening(board_copy)
             
             self.board.updateHash(board_copy)
             move = format_point(point_to_coord(self.board.hashTable.lookup(self.board.hash())[1], board_copy.size))
             signal.alarm(0)
 
             if (self.genMoveRunning == False):
-                if (result == 1 and current_player == BLACK):
+                if (result == 2 and current_player == BLACK):
                     self.respond("b %s" %move)
-                elif (result == 1 and current_player == WHITE):
+                elif (result == 2 and current_player == WHITE):
                     self.respond("w %s" %move)
-                elif (result == -1 and current_player == BLACK):
+                elif (result == -2 and current_player == BLACK):
                     self.respond("w")
-                elif (result == -1 and current_player == WHITE):
+                elif (result == -2 and current_player == WHITE):
                     self.respond("b")
                 else:
                     self.respond("draw %s" %move)
             
             return self.board.hashTable.lookup(self.board.hash())[1]
-        except:
+        except Exception as e:
+            print(e)
             if (self.genMoveRunning == False):
                 self.respond("unknown")
+
+def iterativeDeepening(board):
+    result = 1
+    for d in range(1, board.get_empty_points().size + 1):
+        result = alphabeta_tt(board, -INFINITY, INFINITY, board.hashTable, 0, INFINITY, d)
+        if result == 2:
+            return result
+    return result
 
 def storeScore(tt, state, score):
     tt.storeScore(state.hash(), score)
@@ -404,23 +413,24 @@ def storeMove(tt, state, move):
     tt.storeMove(state.hash(), move)
     return move
         
-def alphabeta_tt(state, alpha, beta, tt, depth, depthMove):
+def alphabeta_tt(state, alpha, beta, tt, depth, depthMove, depthLimit):
     result = tt.lookup(state.hash())
     if (result != None):
-        return result[0]
-    if (state.endOfGame()):
+        if (result[0] == 2):
+            return result[0]
+    if (state.endOfGame() or depth == depthLimit):
         result = state.staticallyEvaluateForToPlay()
         return storeScore(tt, state, result)
     for m in state.get_empty_points():
-        winMove = -1
+        winMove = None
         state.play_move(m, state.current_player)
-        value = -alphabeta_tt(state, -beta, -alpha, tt, depth + 1, depthMove)
+        value = -alphabeta_tt(state, -beta, -alpha, tt, depth + 1, depthMove, depthLimit)
         if value > alpha:
-            if (value == 1 or value == 0):
+            if (value == 0 or value == 2):
                 winMove = m
             alpha = value
         state.undoMove()
-        if (winMove != -1):
+        if (winMove != None):
             storeMove(tt, state, winMove)
         if value >= beta:
             return storeScore(tt, state, beta)

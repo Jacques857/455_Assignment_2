@@ -1,30 +1,37 @@
-boardsize 5
+boardsize 7
 clear_board
 play B a1
 play W b1
-play b c1
+play b b2
 play w d1
-play b e1
+play b c3
 play w a2
-play B a3
+play B d4
 play W b2
-play b c2
-play w d2
+play b f1
+play w d6
 play b e2
 play W b3
 play b c3
 play w d3
 play b e3
-play w b4
+play w b7
 play b a5
 play w d4
-play b d5
-play w a4
+play b f5
+play w a7
 play b b5
 play w e4
 play b c4
+play w c1
+play b c2
+play w d2
+play b e1
+play w f2
+play b g1
+play w g2
+play b a3
+play w a4
 
 showboard
 solve
-genmove w
-genmove b
